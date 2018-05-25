@@ -3,14 +3,18 @@ import numpy as np
 import cv2
 from collections import OrderedDict
 import time
+import argparse
 
 class ColorTracker:
     """ Class defined to track the colors of the balls in the image """
 
 
-    def __init__(self, tracked_colors = []):
+    def __init__(self, tracked_colors = [], debug_flag = False):
         ## Just initialice some global variables.
         self.tracked_colors = tracked_colors
+
+        # Initialize debugging flag
+        self.debug_flag = debug_flag
 
         # Dictionary of recognized color labels.
         self.RGB_dictionary = OrderedDict({
@@ -23,17 +27,26 @@ class ColorTracker:
             "YELLOW": (255, 255, 0),
         })
 
+        # Minimum sizes in pixels of the balls detected
+        self.ball_min_size = 100 #pixels
+
+
         # Percentage margin for hue, saturation and value.
         self.margins = { "hue": 0.05,
-                        "saturation": 0.2,
-                        "value": 0.2
+                        "saturation": 0.3,
+                        "value": 0.3
                         }
+        # self.margins = { "hue": 0.05,
+        #                 "saturation": 0.2,
+        #                 "value": 0.2
+        #                 }
 
         # Transform the RGB dictionary to LAB.
         self.LAB_dictionary = self.RBG2LAB_labels(self.RGB_dictionary)
 
         # Place holder for the shifted image.
         self.shifted = None
+
 
 
     def color2Mask(self, image):
@@ -122,18 +135,21 @@ class ColorTracker:
 
             # Try to Eliminate wrong contours based on how much thier perimeter and area approximate an actual circle.
             area = cv2.contourArea(c)
+            # Filter contours by area
+            if area < self.ball_min_size: continue
+
             perimeter = cv2.arcLength(c,True)
             (x,y),radius = cv2.minEnclosingCircle(c)
             # Transform the center of the circle to pixels
             (x,y) = (int(x),int(y))
-            circle_area = int( np.pi * radius**2)
-            circle_perimeter = int( np.pi * radius*2)
-            if not (circle_perimeter*0.9 < perimeter < circle_perimeter*1.1 and circle_area*0.6 < area < circle_area*1.4): continue
+            # circle_area = int( np.pi * radius**2)
+            # circle_perimeter = int( np.pi * radius*2)
+            # if not (circle_perimeter*0.5 < perimeter < circle_perimeter*1.5 and circle_area*0.4 < area < circle_area*1.6): continue
 
             # If the contour can be approximated by less than 8 lines, then it probably isn't a circle.
             peri = cv2.arcLength(c, True)
             approx = cv2.approxPolyDP(c, 0.04 * peri, True)
-            if len(approx) <= 5: continue
+            if len(approx) <= 4: continue
 
             ## If you reach this far, detect the contour color using LAB aproximation
             # Retrieve center color from the image
@@ -198,6 +214,10 @@ class ColorTracker:
         ## Calculate contours and colors of the tracked objects
         tracked_balls = self.mask2CentroidColor(shifted, mask)
         # Return the dictionary
+
+        # Print the Mask if we are in debug mode
+        if self.debug_flag: cv2.imshow("mask",  mask)
+
         return tracked_balls
 
 
@@ -215,6 +235,13 @@ def onMouse (event, x, y, f, other):
 
 def main():
 
+    ap = argparse.ArgumentParser()
+
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument("-c", "--camera", type=int, default=0, help="Index of the camera to use")
+    group.add_argument("-i", "--image",  type=str, help="Static image to run the algorithm")
+    ap.add_argument("-d", "--debug",  action="store_true", default=False, help="Print debbuging images")
+    args = vars(ap.parse_args())
 
     # Create NamedWindow, and set callback.
     cv2.namedWindow('Result')
@@ -222,14 +249,29 @@ def main():
 
     global tracker
     # Initialize color tracking object
-    tracker = ColorTracker()
+    tracker = ColorTracker(debug_flag = args["debug"])
 
-    # load the image and perform pyramid mean shift filtering
-    # to aid the thresholding step
-    image = cv2.imread("../Figures/Balls_2.jpg")
-    # Super filter the Image
+
+    # Start Media Input
+    if args["image"] == None:
+        # Initialize camera input
+        cap = cv2.VideoCapture(args["camera"])
+    else:
+        # Load image from Disk
+        image = cv2.imread(args["image"])
+        if (image is None):
+            print("Error: Image '{}' not Found".format(args["image"]))
+
+
 
     while (1):
+
+        if args["image"] == None:
+            # Capture frame-by-frame
+            ret, image = cap.read()
+        else:
+            image_copy = image.copy()
+
 
         # Create a Copy of the image.
         image_copy = image.copy()
@@ -262,6 +304,9 @@ def main():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+
+    # CLose everything when done
+    if args["image"] == None: cap.release()
     cv2.destroyAllWindows()
 
 

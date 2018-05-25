@@ -1,12 +1,13 @@
 import numpy as np
 import cv2
 import cv2.aruco as aruco
+import argparse
 
 
 
 class ARTracker:
 
-    def __init__(self, marker_size = 0.144, field_length = 0.46, field_width = 0.46):
+    def __init__(self, marker_size = 0.144, field_length = 0.46, field_width = 0.46, debug_flag = False):
 
         # Our operations on the frame come here
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
@@ -37,6 +38,8 @@ class ARTracker:
         # Last Marker position
         self.marker_corners = []
 
+        # Initialize debug mode.
+        self.debug_flag = debug_flag
 
     def four_point_transform(self, image, pts):
 
@@ -80,7 +83,8 @@ class ARTracker:
         self.marker_corners, ids, rejectedImgPoints = aruco.detectMarkers(image, self.aruco_dict, parameters=self.parameters)
 
         # Draw the found markers in the image, and show the image.
-        image = aruco.drawDetectedMarkers(image, self.marker_corners)
+        if self.debug_flag == True:
+            image = aruco.drawDetectedMarkers(image, self.marker_corners)
 
         # Perspective transformation
         if self.marker_corners != []:
@@ -100,19 +104,34 @@ class ARTracker:
 def main():
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("-c", "--camera", required=True,
-    	help="path to the input camera")
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument("-c", "--camera", type=int, default=0, help="Index of the camera to use")
+    group.add_argument("-i", "--image",  type=str, help="Static image to run the algorithm")
+    ap.add_argument("-d", "--debug",  action="store_true", default=False, help="Print debbuging images")
     args = vars(ap.parse_args())
 
-    # Initialize camera input
-    cap = cv2.VideoCapture(int(args["camera"]))
+
+    # Start Media Input
+    if args["image"] == None:
+        # Initialize camera input
+        cap = cv2.VideoCapture(args["camera"])
+    else:
+        # Load image from Disk
+        frame_0 = cv2.imread(args["image"])
+        if (frame_0 is None):
+            print("Error: Image '{}' not Found".format(args["image"]))
+            exit()
 
     # Create the marker tracker object.
-    ar_tracker = ARTracker()
+    ar_tracker = ARTracker(debug_flag = args["debug"])
 
     while(True):
-        # Capture frame-by-frame
-        ret, frame = cap.read()
+
+        if args["image"] == None:
+            # Capture frame-by-frame
+            ret, frame = cap.read()
+        else:
+            frame = frame_0.copy()
 
         # Take the current frame and warp it.
         warped = ar_tracker.run(frame)
@@ -125,7 +144,7 @@ def main():
             break
 
     # When everything done, release the capture
-    cap.release()
+    if args["image"] == None: cap.release()
     cv2.destroyAllWindows()
 
 

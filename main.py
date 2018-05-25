@@ -54,9 +54,6 @@ def run():
         httpd.handle_request()
         # httpd.serve_forever()
 
-
-
-
 # CV2 Callback
 def onMouse (event, x, y, f, other):
     # Bring the image from the global context
@@ -103,8 +100,10 @@ def main():
 
     # construct the argument parse and parse the arguments
     ap = argparse.ArgumentParser()
-    ap.add_argument("-c", "--camera", required=True,
-    	help="path to the input camera")
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument("-c", "--camera", type=int, default=0, help="Index of the camera to use")
+    group.add_argument("-i", "--image",  type=str, help="Static image to run the algorithm")
+    ap.add_argument("-d", "--debug",  action="store_true", default=False, help="Print debbuging images")
     args = vars(ap.parse_args())
 
 
@@ -124,21 +123,32 @@ def main():
     cv2.createTrackbar('Field Width [cm]', 'Corrected Perspective', 46, 150, field_width)
     cv2.createTrackbar('Reset Tracked Colors', 'Corrected Perspective', 0, 1, reset_tracked_colors)
 
-    # Initialize camera input
-    cap = cv2.VideoCapture(int(args["camera"]))
+    # Start Media Input
+    if args["image"] == None:
+        # Initialize camera input
+        cap = cv2.VideoCapture(args["camera"])
+    else:
+        # Load image from Disk
+        frame_0 = cv2.imread(args["image"])
+        if (frame_0 is None):
+            print("Error: Image '{}' not Found".format(args["image"]))
+            exit()
 
     # Create the marker tracker object.
     # Initialize color tracking object
-    ar_tracker = ARTracker()
-    col_tracker = ColorTracker()
+    ar_tracker = ARTracker(debug_flag = args["debug"])
+    col_tracker = ColorTracker(debug_flag = args["debug"])
 
     t = threading.Thread(target=run)
     t.start()
 
     while (1):
 
-        # Capture frame-by-frame
-        ret, frame = cap.read()
+        if args["image"] == None:
+            # Capture frame-by-frame
+            ret, frame = cap.read()
+        else:
+            frame = frame_0.copy()
 
         # Run the Color Tracker.
         start_time = time.time()
@@ -188,10 +198,11 @@ def main():
             break
 
     # When everything done, release the capture
-    cap.release()
+    # When everything done, release the capture
+    if args["image"] == None: cap.release()
     cv2.destroyAllWindows()
     server_on = False
-    print("server_on = False")
+    print("Terminating Server ...")
 
 
 if __name__ == '__main__':
