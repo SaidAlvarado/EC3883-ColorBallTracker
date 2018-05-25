@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import cv2.aruco as aruco
-
+import argparse
 
 
 def four_point_transform(image, pts, oldM, side_meters, field_length, field_width):
@@ -51,9 +51,14 @@ def four_point_transform(image, pts, oldM, side_meters, field_length, field_widt
 
 
 
+ap = argparse.ArgumentParser()
+ap.add_argument("-c", "--camera", required=True,
+	help="path to the input camera")
+args = vars(ap.parse_args())
 
+# Initialize camera input
+cap = cv2.VideoCapture(int(args["camera"]))
 
-cap = cv2.VideoCapture(1)
 
 # Our operations on the frame come here
 aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)

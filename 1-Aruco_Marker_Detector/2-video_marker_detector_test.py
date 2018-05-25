@@ -1,9 +1,16 @@
 import numpy as np
 import cv2
 import cv2.aruco as aruco
+import argparse
 
 
-cap = cv2.VideoCapture(1)
+ap = argparse.ArgumentParser()
+ap.add_argument("-c", "--camera", required=True,
+	help="path to the input camera")
+args = vars(ap.parse_args())
+
+# Initialize camera input
+cap = cv2.VideoCapture(int(args["camera"]))
 
 while(True):
     # Capture frame-by-frame

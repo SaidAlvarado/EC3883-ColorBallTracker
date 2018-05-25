@@ -99,8 +99,13 @@ class ARTracker:
 
 def main():
 
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-c", "--camera", required=True,
+    	help="path to the input camera")
+    args = vars(ap.parse_args())
+
     # Initialize camera input
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(int(args["camera"]))
 
     # Create the marker tracker object.
     ar_tracker = ARTracker()

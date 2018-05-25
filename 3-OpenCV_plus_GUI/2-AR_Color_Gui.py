@@ -3,6 +3,7 @@ import cv2
 import cv2.aruco as aruco
 from collections import OrderedDict
 import time
+import argparse
 
 from ColorTracker import *
 from ARTracker import *
@@ -53,6 +54,13 @@ def reset_tracked_colors(x):
 def main():
 
     global col_tracker, ar_tracker
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-c", "--camera", required=True,
+    	help="path to the input camera")
+    args = vars(ap.parse_args())
+
+
     # Create NamedWindow, and set callback.
     cv2.namedWindow('Corrected Perspective')
     cv2.setMouseCallback('Corrected Perspective', onMouse, 0 );
@@ -63,9 +71,8 @@ def main():
     cv2.createTrackbar('Field Width [cm]', 'Corrected Perspective', 46, 150, field_width)
     cv2.createTrackbar('Reset Tracked Colors', 'Corrected Perspective', 0, 1, reset_tracked_colors)
 
-
     # Initialize camera input
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(int(args["camera"]))
 
     # Create the marker tracker object.
     # Initialize color tracking object

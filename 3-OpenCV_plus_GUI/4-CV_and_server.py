@@ -3,14 +3,13 @@ import cv2
 import cv2.aruco as aruco
 from collections import OrderedDict
 import time
+import argparse
 
 from http.server import BaseHTTPRequestHandler,HTTPServer
+import json
 import threading
 import os
 import sys
-
-import json
-
 
 from ColorTracker import *
 from ARTracker import *
@@ -32,8 +31,8 @@ class OpenCVHTTPRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
             #send file content to client
-            # t = json.dumps(tracked_balls_meter)
-            t = json.dumps([[1,2,3],[4,5,6],[7,8,9]])
+            t = json.dumps(tracked_balls_meter)
+            # t = json.dumps([[1,2,3],[4,5,6],[7,8,9]])
             self.wfile.write(bytes(t,"utf-8"))
             return
 
@@ -102,6 +101,13 @@ def reset_tracked_colors(x):
 
 def main():
 
+    # construct the argument parse and parse the arguments
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-c", "--camera", required=True,
+    	help="path to the input camera")
+    args = vars(ap.parse_args())
+
+
     # Define  global variables
     global col_tracker, ar_tracker, tracked_balls_meter, server_on
     # Initialize the Tracked balls empty
@@ -118,9 +124,8 @@ def main():
     cv2.createTrackbar('Field Width [cm]', 'Corrected Perspective', 46, 150, field_width)
     cv2.createTrackbar('Reset Tracked Colors', 'Corrected Perspective', 0, 1, reset_tracked_colors)
 
-
     # Initialize camera input
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(int(args["camera"]))
 
     # Create the marker tracker object.
     # Initialize color tracking object

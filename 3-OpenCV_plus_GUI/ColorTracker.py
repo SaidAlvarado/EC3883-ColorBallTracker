@@ -215,6 +215,7 @@ def onMouse (event, x, y, f, other):
 
 def main():
 
+
     # Create NamedWindow, and set callback.
     cv2.namedWindow('Result')
     cv2.setMouseCallback('Result', onMouse, 0 );
