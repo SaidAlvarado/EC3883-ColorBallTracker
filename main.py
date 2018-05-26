@@ -4,6 +4,7 @@ import cv2.aruco as aruco
 from collections import OrderedDict
 import time
 import argparse
+import yaml
 
 from http.server import BaseHTTPRequestHandler,HTTPServer
 import json
@@ -104,7 +105,15 @@ def main():
     group.add_argument("-c", "--camera", type=int, default=0, help="Index of the camera to use")
     group.add_argument("-i", "--image",  type=str, help="Static image to run the algorithm")
     ap.add_argument("-d", "--debug",  action="store_true", default=False, help="Print debbuging images")
+    group.add_argument("-m", "--matrix",  type=str, default="calibration.yaml",help="Calibration file")
     args = vars(ap.parse_args())
+
+    # Load calibration parameters
+    with open(args["matrix"]) as f:
+        loadeddict = yaml.load(f)
+    # Unpack calibration parameters
+    mtx  = np.asarray(loadeddict.get('camera_matrix'))
+    dist = np.asarray(loadeddict.get('dist_coeff'))
 
 
     # Define  global variables
@@ -127,12 +136,19 @@ def main():
     if args["image"] == None:
         # Initialize camera input
         cap = cv2.VideoCapture(args["camera"])
+        ret, calib_frame = cap.read()
     else:
         # Load image from Disk
         frame_0 = cv2.imread(args["image"])
+        calib_frame = frame_0.copy()
         if (frame_0 is None):
             print("Error: Image '{}' not Found".format(args["image"]))
             exit()
+
+    # Get the calibration matrix
+    h,  w = calib_frame.shape[:2]
+    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h))
+
 
     # Create the marker tracker object.
     # Initialize color tracking object
@@ -150,8 +166,14 @@ def main():
         else:
             frame = frame_0.copy()
 
-        # Run the Color Tracker.
+        # Start the FPS timer
         start_time = time.time()
+
+        # Undistort and Crop the image
+        dst = cv2.undistort(frame, mtx, dist, None, newcameramtx)
+        x,y,w,h = roi
+        frame = dst[y:y+h, x:x+w]
+
         # Take the current frame and warp it.
         warped = ar_tracker.run(frame)
         # Then track the balls.
@@ -174,13 +196,13 @@ def main():
             cv2.circle(warped, center, 1, (255, 255, 255), -1)
 
             # Transform the information from pixels to meters.
-            center_m = (center[0] * ar_tracker.pixel_to_meters, center[1] * ar_tracker.pixel_to_meters)
+            center_m = (center[0] * ar_tracker.pixel_to_meters, (y - center[1]) * ar_tracker.pixel_to_meters)
             radius = radius * ar_tracker.pixel_to_meters
             intermediary_ball_list.append([center_m, radius, ball[2]])
 
         # Finally Write all this information to a "global" variable
         tracked_balls_meter = intermediary_ball_list.copy()
-        # print(tracked_balls_meter)
+        if args["debug"]: print("tracked_balls = {}".format(tracked_balls_meter))
 
         end_time = time.time()
         # Calculate speed of the algorithm
