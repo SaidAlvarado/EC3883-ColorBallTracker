@@ -195,10 +195,6 @@ def main():
             # Draw a white dot at the center of each ball
             cv2.circle(warped, center, 1, (255, 255, 255), -1)
 
-            print("center[0] = {}".format(center[0]))
-            print("center[1] = {}".format(center[1]))
-            print("pixel_to_meters = {}".format(ar_tracker.pixel_to_meters))
-            print("warped.shape = {}".format(warped.shape))            # Transform the information from pixels to meters.
             center_m = (center[0] * ar_tracker.pixel_to_meters, (warped.shape[0] - center[1])  * ar_tracker.pixel_to_meters)
             radius = radius * ar_tracker.pixel_to_meters
             intermediary_ball_list.append([center_m, radius, ball[2]])
