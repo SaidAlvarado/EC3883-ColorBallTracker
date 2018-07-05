@@ -48,7 +48,7 @@ def run():
 
     #ip and port of servr
     #by default http server port is 8000
-    server_address = ('127.0.0.1', 8000)
+    server_address = ('0.0.0.0', 8000)
     httpd = HTTPServer(server_address, OpenCVHTTPRequestHandler)
     print('http server is running...')
     while(server_on):
